@@ -150,6 +150,8 @@ class Company:
     self._FamilyFoodOutletCapacity = 150
     self._FastFoodOutletCapacity = 200
     self._NamedChefOutletCapacity = 50
+    self._LoanBalance = 0.0
+    self._InterestRate = 0.0
     self._Name = Name
     self._Category = Category
     self._Balance = Balance
@@ -221,6 +223,8 @@ class Company:
     Details = ""
     ProfitLossFromOutlets = 0
     ProfitLossFromThisOutlet = 0
+    LoanCost = self._LoanBalance * (self._InterestRate / 100)
+    Details += f"Loan cost of {LoanCost} due to interest rate of and loan of {self._LoanBalance} at {self._InterestRate}\n"
     if len(self._Outlets) > 1:
       DeliveryCosts = self._BaseCostOfDelivery + self.CalculateDeliveryCost()
     else:
@@ -231,7 +235,7 @@ class Company:
       Details += "Outlet " + str(Current + 1) + " profit/loss: " + str(ProfitLossFromThisOutlet) + "\n"
       ProfitLossFromOutlets += ProfitLossFromThisOutlet
     Details += "Previous balance for company: " + str(self._Balance) + "\n"
-    self._Balance += ProfitLossFromOutlets - self._DailyCosts - DeliveryCosts
+    self._Balance += ProfitLossFromOutlets - self._DailyCosts - DeliveryCosts - LoanCost
     Details += "New balance for company: " + str(self._Balance)
     return Details
 
@@ -262,6 +266,22 @@ class Company:
       self._Capacity = self._NamedChefOutletCapacity
     NewOutlet = Outlet(X, Y, self._Capacity)
     self._Outlets.append(NewOutlet)
+
+  def GetOrderedListOfOutlets(self):
+    Temp = []
+    Temp.append(self._Outlets[0])
+    while len(Temp) != len(self._Outlets):
+      smallestOutlet = None
+      for i in self._Outlets:
+        curX = i.GetX()
+        curY = i.GetY()
+        if i not in Temp:
+          if smallestOutlet == None:
+            smallestOutlet = i
+          elif abs(curX - Temp[-1].GetX()) + abs(curY - Temp[-1].GetX()) < abs(smallestOutlet.GetX() - Temp[-1].GetX()) + abs(smallestOutlet.GetY() - Temp[-1].GetX()):
+            smallestOutlet = i
+      Temp.append(smallestOutlet)
+    return Temp
 
   def __GetListOfOutlets(self):
     Temp = []
@@ -470,6 +490,8 @@ class Simulation:
         print("1. Open new outlet")
         print("2. Close outlet")
         print("3. Expand outlet")
+        print("4. Get a loan")
+        print("5. Pay a loan")
         print("C. Cancel")
         Choice = input("\nEnter your choice: ")
         print()
@@ -492,6 +514,27 @@ class Simulation:
             self._Companies[Index].OpenOutlet(X, Y)
           else:
             print("Invalid coordinates.")
+        elif Choice == "4":
+          print(self._Companies[Index]._LoanBalance)
+          if self._Companies[Index]._LoanBalance == 0:
+            self._Companies[Index]._LoanBalance = 10000
+            self._Companies[Index]._Balance += 10000
+            interestRate = float(input("Please Enter an interest rate (i.e. 1.25): "))
+            self._Companies[Index]._InterestRate = interestRate
+            print(f"Company has recieved loan of 10000 with the interest rate of {interestRate}")
+          else:
+            print("Company already has a loan to payback")
+        elif Choice == "5":
+          if self._Companies[Index]._LoanBalance == 0:
+            print("No loan to payback")
+          else:
+            print(f"Loan amount owed: {self._Companies[Index]._LoanBalance}")
+            amount = float(input("How much of the loan do you want to pay back: "))
+            if amount <= self._Companies[Index]._LoanBalance:
+              self._Companies[Index]._LoanBalance -= amount
+              self._Companies[Index]._Balance -= amount
+            else:
+              print("Cannot pay back more than the value of the loan")
         print()
 
   def DisplayCompanies(self):
@@ -516,6 +559,7 @@ class Simulation:
         while Index == -1:
           CompanyName = input("Enter company name: ")
           Index = self.GetIndexOfCompany(CompanyName)
+          self._Companies[Index].GetOrderedListOfOutlets()
         self.ModifyCompany(Index)
       elif Choice == "4":
         self.AddCompany()
